@@ -1,0 +1,11 @@
+--- a/sanei/sanei_scsi.c
++++ b/sanei/sanei_scsi.c
+@@ -1273,7 +1273,7 @@ sanei_scsi_open (const char *dev, int *f
+      disconnect... ;-( */
+   {
+     int timeout;
+-    timeout = sane_scsicmd_timeout * HZ;
++    timeout = sane_scsicmd_timeout * sysconf(_SC_CLK_TCK);
+     ioctl (fd, SG_SET_TIMEOUT, &timeout);
+   }
+ #endif

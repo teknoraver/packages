@@ -1,0 +1,88 @@
+--- a/lib/imgstream.cc
++++ b/lib/imgstream.cc
+@@ -26,6 +26,8 @@
+ //  the GNU General Public License in all respects for all of the
+ //  code used other then esmod.
+ 
++#include <cstdlib>
++
+ #include <argz.h>
+ 
+ #include "imgstream.hh"
+--- a/lib/jpegstream.cc
++++ b/lib/jpegstream.cc
+@@ -26,6 +26,8 @@
+ //  the GNU General Public License in all respects for all of the
+ //  code used other then esmod.
+ 
++#include <cstdlib>
++
+ #include "jpegstream.hh"
+ 
+ #include "gettext.h"
+--- a/frontend/pisa_tool.h
++++ b/frontend/pisa_tool.h
+@@ -35,12 +35,12 @@
+ #include <config.h>
+ #include "pisa_structs.h"
+ 
+-template <class type>
+-static type similarity ( const type & A,
+-			 const type & a,
+-			 const type & b )
++template <class Type>
++Type similarity ( const Type & A,
++		  const Type & a,
++		  const Type & b )
+ {
+-  type B;
++  Type B;
+ 
+   if ( a == 0 )
+     return 0;
+@@ -52,21 +52,6 @@ static type similarity ( const type & A,
+ 
+   return B;
+ }
+-
+-template <>
+-static double similarity <double> ( const double & A,
+-				    const double & a,
+-				    const double & b )
+-{
+-  double B;
+-
+-  if ( a == 0 )
+-    return 0;
+-
+-  B = ( b * A ) / a;
+-
+-  return B;
+-}
+ 
+ 
+ template <class Type>
+--- a/frontend/pisa_tool.cc
++++ b/frontend/pisa_tool.cc
+@@ -32,6 +32,21 @@
+ #include "pisa_tool.h"
+ 
+ 
++template <>
++double similarity <double> ( const double & A,
++			     const double & a,
++			     const double & b )
++{
++  double B;
++
++  if ( a == 0 )
++    return 0;
++
++  B = ( b * A ) / a;
++
++  return B;
++}
++
+ /*--------------------------------------------------------------*/
+ GtkWidget * xpm2widget ( GtkWidget * widget, char ** xpm_data )
+ {

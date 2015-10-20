@@ -1,0 +1,59 @@
+--- a/dev/null
++++ b/include/argz.h
+@@ -0,0 +1,56 @@
++#ifndef _ARGZ_H
++#define _ARGZ_H
++
++#include <errno.h>
++#include <string.h>
++#include <stdlib.h>
++
++#ifndef __error_t_defined
++typedef int error_t;
++#endif
++
++error_t
++argz_add_sep(char **argz, size_t * argz_len, const char *string, int delim)
++{
++	size_t nlen = strlen(string) + 1;
++
++	if (nlen > 1) {
++		const char *rp;
++		char *wp;
++
++		*argz = (char *)realloc(*argz, *argz_len + nlen);
++		if (*argz == NULL)
++			return ENOMEM;
++
++		wp = *argz + *argz_len;
++		rp = string;
++		do
++			if (*rp == delim) {
++				if (wp > *argz && wp[-1] != '\0')
++					*wp++ = '\0';
++				else
++					--nlen;
++			} else
++				*wp++ = *rp;
++		while (*rp++ != '\0');
++
++		*argz_len += nlen;
++	}
++
++	return 0;
++}
++
++char *argz_next(const char *argz, size_t argz_len, const char *entry)
++{
++	if (entry) {
++		if (entry < argz + argz_len)
++			entry = strchr(entry, '\0') + 1;
++
++		return entry >= argz + argz_len ? NULL : (char *)entry;
++	} else if (argz_len > 0)
++		return (char *)argz;
++	else
++		return NULL;
++}
++
++#endif

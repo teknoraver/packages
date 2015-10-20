@@ -1,0 +1,10 @@
+--- a/backend/epkowa_usb.c
++++ b/backend/epkowa_usb.c
+@@ -62,6 +62,7 @@ SANE_Word sanei_epson_usb_product_ids[]
+   0x839,			/* PX-A740 / Stylus CX8300/CX8400/DX8400 */
+   0x83a,			/*          / Stylus CX9300F/CX9400Fax/DX9400F */
+   0x83c,			/* PM-A840 / Stylus Photo RX585/RX595/RX610 */
++  0x8a6,			/* WF-2530 WF-2530 WF-2540 PX-535F */
+   0				/* last entry - this is used for devices that are specified
+ 				   in the config file as "usb <vendor> <product>" */
+ };

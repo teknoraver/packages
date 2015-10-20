@@ -1,0 +1,42 @@
+--- a/lib/imgstream.cc
++++ b/lib/imgstream.cc
+@@ -185,8 +185,8 @@ imgstream::dlclose (dl_handle lib)
+   return lt_dlclose (lib);
+ }
+ 
+-static int reversionsort (const void*, const void*);
+-int selector (const dirent *);
++static int reversionsort (const struct dirent **, const struct dirent **);
++int selector (const struct dirent *);
+ 				// forward declarations
+ 
+ //!
+@@ -301,7 +301,7 @@ const char *imgstream::_libname = NULL;
+ 
+ //! Selects relevant library filenames.
+ int
+-selector (const dirent *dir)
++selector (const struct dirent *dir)
+ {
+   return (0 == strncmp (dir->d_name, imgstream::_libname,
+ 			strlen (imgstream::_libname)));
+@@ -310,7 +310,7 @@ selector (const dirent *dir)
+ //! The C library's versionsort() function in reverse.
+ static
+ int
+-reversionsort (const void *a, const void *b)
++reversionsort (const struct dirent **a, const struct dirent **b)
+ {
+   return versionsort (b, a);
+ }
+--- a/frontend/file-selector.cc
++++ b/frontend/file-selector.cc
+@@ -1023,7 +1023,7 @@ file_selector::permission( const char *f
+   // check write access to the directory (note that we need execute
+   // privileges as well)
+ 
+-  char *slash = strrchr( file, '/');
++  char *slash = strrchr( (char *)file, '/');
+   *slash = '\0';		// temporarily truncate to dirname
+   const char *dir = (file == slash
+ 		     ? "/"	// whoops!, file in root directory

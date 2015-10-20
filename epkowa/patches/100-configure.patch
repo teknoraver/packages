@@ -1,0 +1,46 @@
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -247,13 +247,7 @@ SUBDIRS = \
+ 	libltdl \
+ 	lib \
+ 	sanei \
+-	backend \
+-	non-free \
+-	frontend \
+-	utils \
+-	po \
+-	intl \
+-	doc
++	backend
+ 
+ ACLOCAL_AMFLAGS = -I m4
+ M4_MACROS = \
+--- a/configure
++++ b/configure
+@@ -4651,7 +4651,7 @@ else
+ fi
+ 
+ 
+-
++pkg_failed=no
+ if test $pkg_failed = yes; then
+ 
+ if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+@@ -4762,7 +4762,7 @@ else
+ fi
+ 
+ 
+-
++pkg_failed=no
+ if test $pkg_failed = yes; then
+ 
+ if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+@@ -18114,7 +18114,7 @@ rm -f core conftest.err conftest.$ac_obj
+ fi
+ { echo "$as_me:$LINENO: result: $ac_cv_type_error_t" >&5
+ echo "${ECHO_T}$ac_cv_type_error_t" >&6; }
+-if test $ac_cv_type_error_t = yes; then
++if true; then
+ 
+ cat >>confdefs.h <<_ACEOF
+ #define HAVE_ERROR_T 1
