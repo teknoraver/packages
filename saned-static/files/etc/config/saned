@@ -1,0 +1,3 @@
+config saned
+	option enabled	1
+	option bind	192.168.85.1

@@ -1,0 +1,69 @@
+From 485bd73258cc175e9dadd2d8f649c93ca0e80867 Mon Sep 17 00:00:00 2001
+From: Matteo Croce <matteo@openwrt.org>
+Date: Sun, 20 Sep 2015 19:35:00 +0200
+Subject: [PATCH 2/5] saned: parse inetd args in main()
+
+move argument parsing logic from run_inetd() to main()
+---
+ frontend/saned.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/frontend/saned.c b/frontend/saned.c
+index e717ed2..ab36397 100644
+--- a/frontend/saned.c
++++ b/frontend/saned.c
+@@ -3172,7 +3172,7 @@ run_standalone (char *user)
+ 
+ 
+ static void
+-run_inetd (int argc, char **argv)
++run_inetd (char *sock)
+ {
+   
+   int fd = -1;
+@@ -3238,18 +3238,13 @@ run_inetd (int argc, char **argv)
+ 
+       close (dave_null);
+     }
+-#ifndef HAVE_OS2_H
+-  /* Unused in this function */
+-  argc = argc;
+-  argv = argv;
+-
+-#else
++#ifdef HAVE_OS2_H
+   /* under OS/2, the socket handle is passed as argument on the command
+      line; the socket handle is relative to IBM TCP/IP, so a call
+      to impsockethandle() is required to add it to the EMX runtime */
+-  if (argc == 2)
++  if (sock)
+     {
+-      fd = _impsockhandle (atoi (argv[1]), 0);
++      fd = _impsockhandle (atoi (sock), 0);
+       if (fd == -1)
+ 	perror ("impsockhandle");
+     }
+@@ -3265,6 +3260,7 @@ main (int argc, char *argv[])
+   char options[64] = "";
+   debug = DBG_WARN;
+   char *user = NULL;
++  char *sock = NULL;
+ 
+   prog_name = strrchr (argv[0], '/');
+   if (prog_name)
+@@ -3351,7 +3347,11 @@ main (int argc, char *argv[])
+     }
+   else
+     {
+-      run_inetd(argc, argv);
++#ifdef HAVE_OS2_H
++      if (argc == 2)
++	sock = argv[1];
++#endif
++      run_inetd(sock);
+     }
+ 
+   DBG (DBG_WARN, "saned exiting\n");
+-- 
+2.5.0
+

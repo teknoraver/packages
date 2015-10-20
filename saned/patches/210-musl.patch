@@ -1,0 +1,33 @@
+Index: sane-backends-1.0.24/include/sane/sanei.h
+===================================================================
+--- sane-backends-1.0.24.orig/include/sane/sanei.h	2013-02-23 03:00:56.000000000 +0100
++++ sane-backends-1.0.24/include/sane/sanei.h	2014-10-22 21:15:20.927931247 +0200
+@@ -155,6 +155,16 @@ extern SANE_Status sanei_check_value (co
+ 
+ extern SANE_Status sanei_constrain_value (const SANE_Option_Descriptor * opt,
+ 					  void * value, SANE_Word * info);
++#if !defined( __i386__) && !defined(__arm__) || defined(__MUSL_GLIBC_TYPES_H)
++static unsigned char inb(unsigned int port)
++{
++       return 0;
++}
++
++static void outb(unsigned char value, unsigned int port)
++{
++}
++#endif
+ 
+ 
+ #endif /* sanei_h */
+Index: sane-backends-1.0.24/sanei/sanei_udp.c
+===================================================================
+--- sane-backends-1.0.24.orig/sanei/sanei_udp.c	2013-08-26 03:01:38.000000000 +0200
++++ sane-backends-1.0.24/sanei/sanei_udp.c	2014-10-22 20:27:00.818979082 +0200
+@@ -46,6 +46,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <fcntl.h>
++#include <sys/types.h>
+ 
+ #ifdef HAVE_WINSOCK2_H
+ #include <winsock2.h>
