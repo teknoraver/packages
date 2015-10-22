@@ -1,0 +1,487 @@
+Index: iscan-2.10.0/sanei/sanei_usb.c
+===================================================================
+--- iscan-2.10.0.orig/sanei/sanei_usb.c
++++ iscan-2.10.0/sanei/sanei_usb.c
+@@ -60,7 +60,7 @@
+ #include <resmgr.h>
+ #endif
+ #ifdef HAVE_LIBUSB
+-#include <usb.h>
++#include <libusb.h>
+ #endif /* HAVE_LIBUSB */
+ 
+ #define BACKEND_NAME	sanei_usb
+@@ -92,10 +92,10 @@ typedef struct
+   SANE_Int int_out_ep;
+   SANE_Int interface_nr;
+ #ifdef HAVE_LIBUSB
+-  usb_dev_handle *libusb_handle;
+-  struct usb_device *libusb_device;
++  struct libusb_device_handle *libusb_handle;
++  struct libusb_device *libusb_device;
+ #if defined (__linux__)
+-#define MAX_INTERFACE_FLAGS	((USB_MAXINTERFACES + 7) / 8)
++#define MAX_INTERFACE_FLAGS	((32 + 7) / 8) /* USB_MAXINTERFACES */
+   char driver_detached[MAX_INTERFACE_FLAGS];
+ #endif				/* __linux__ */
+ #endif				/* HAVE_LIBUSB */
+@@ -110,7 +110,7 @@ static device_list_type devices[MAX_DEVI
+ 
+ #ifdef HAVE_LIBUSB
+ static int libusb_timeout = 30 * 1000;	/* 30 seconds */
+-
++static libusb_context *ctx;
+ #if defined (__linux__)
+ #ifndef USB_ERROR_STR
+ #define USB_ERROR_STR(x, format, args...) \
+@@ -143,6 +143,7 @@ struct usb_getdriver {
+ 
+ struct usb_dev_handle { int fd; };
+ 
++#if 0
+ #ifndef LIBUSB_HAS_USB_GET_DRIVER_NP
+ static int
+ _usb_get_driver_np (usb_dev_handle *dev, int interface, char *name,
+@@ -263,6 +264,7 @@ attach_usblp_driver (usb_dev_handle *h,
+ 	}
+     }
+ }
++#endif
+ #endif /* __linux__ */
+ #endif /* HAVE_LIBUSB */
+ 
+@@ -381,6 +383,8 @@ sanei_usb_init (void)
+ #ifdef HAVE_LIBUSB
+   struct usb_bus *bus;
+   struct usb_device *dev;
++  struct libusb_device **list;
++  size_t idx;
+ #endif /* HAVE_LIBUSB */
+ 
+   if (inited)
+@@ -472,47 +476,46 @@ sanei_usb_init (void)
+ 
+   /* Check for devices using libusb */
+ #ifdef HAVE_LIBUSB
+-  usb_init ();
++  libusb_init (&ctx);
+ #ifdef DBG_LEVEL
+   if (DBG_LEVEL > 4)
+-    usb_set_debug (255);
++    libusb_set_debug (ctx, 255);
+ #endif /* DBG_LEVEL */
+-  if (!usb_get_busses ())
+-    {
+-      usb_find_busses ();
+-      usb_find_devices ();
+-    }
+-
+   /* Check for the matching device */
+-  for (bus = usb_get_busses (); bus; bus = bus->next)
++  libusb_get_device_list(ctx, &list);
++  for (idx = 0; list[idx] != NULL; idx ++)
+     {
+-      for (dev = bus->devices; dev; dev = dev->next)
+-	{
+ 	  int interface;
+ 	  SANE_Bool found;
++	  struct libusb_device *dev = list[idx];
++	  struct libusb_config_descriptor *cfg;
++	  struct libusb_device_descriptor desc = {0};
++	  int rc = libusb_get_device_descriptor(dev, &desc);
++	  int config;
+ 
+-	  if (!dev->config)
++	  libusb_get_device_descriptor(dev, &desc);
++	  if (libusb_get_active_config_descriptor(dev, &cfg))
+ 	    {
+ 	      DBG (1, "sanei_usb_init: device 0x%04x/0x%04x is not configured\n",
+-		   dev->descriptor.idVendor, dev->descriptor.idProduct);
++		   desc.idVendor, desc.idProduct);
+ 	      continue;
+ 	    }
+-	  if (dev->descriptor.idVendor == 0 || dev->descriptor.idProduct == 0)
++	  if (desc.idVendor == 0 || desc.idProduct == 0)
+ 	    {
+ 	      DBG (5, "sanei_usb_init: device 0x%04x/0x%04x looks like a root hub\n",
+-		   dev->descriptor.idVendor, dev->descriptor.idProduct);
++		   desc.idVendor, desc.idProduct);
+ 	      continue;
+ 	    }
+ 	  found = SANE_FALSE;
+-	  for (interface = 0; interface < dev->config[0].bNumInterfaces && !found; interface++)
++	  for (interface = 0; interface < cfg->bNumInterfaces && !found; interface++)
+ 	    {
+-	      switch (dev->descriptor.bDeviceClass)
++	      switch (desc.bDeviceClass)
+ 		{
+ 		case USB_CLASS_VENDOR_SPEC:
+ 		  found = SANE_TRUE;
+ 		  break;
+ 		case USB_CLASS_PER_INTERFACE:
+-		  switch (dev->config[0].interface[interface].altsetting[0].bInterfaceClass)
++		  switch (cfg->interface[interface].altsetting[0].bInterfaceClass)
+ 		    {
+ 		    case USB_CLASS_VENDOR_SPEC:
+ 		    case USB_CLASS_PER_INTERFACE:
+@@ -524,35 +527,34 @@ sanei_usb_init (void)
+ 		}
+ 	      if (!found)
+ 		DBG (5, "sanei_usb_init: device 0x%04x/0x%04x, interface %d doesn't look like a "
+-		     "scanner (%d/%d)\n", dev->descriptor.idVendor,
+-		     dev->descriptor.idProduct, interface, dev->descriptor.bDeviceClass, 
+-		     dev->config[0].interface[interface].altsetting[0].bInterfaceClass);
++		     "scanner (%d/%d)\n", desc.idVendor,
++		     desc.idProduct, interface, desc.bDeviceClass, 
++		     cfg->interface[interface].altsetting[0].bInterfaceClass);
+ 	    }
+ 	  interface--;
+ 	  if (!found)
+ 	    {
+ 	      DBG (5, "sanei_usb_init: device 0x%04x/0x%04x: no suitable interfaces\n",
+-		   dev->descriptor.idVendor, dev->descriptor.idProduct);
++		   desc.idVendor, desc.idProduct);
+ 	      continue;
+ 	    }
+ 	  
+ 	  devices[dn].libusb_device = dev;
+-	  snprintf (devname, sizeof (devname), "libusb:%s:%s",
+-		    dev->bus->dirname, dev->filename);
++	  snprintf (devname, sizeof (devname), "libusb:%03d:%03d",
++		    libusb_get_bus_number(dev), libusb_get_device_address(dev));
+ 	  devices[dn].devname = strdup (devname);
+ 	  if (!devices[dn].devname)
+ 	    return;
+-	  devices[dn].vendor = dev->descriptor.idVendor;
+-	  devices[dn].product = dev->descriptor.idProduct;
++	  devices[dn].vendor = desc.idVendor;
++	  devices[dn].product = desc.idProduct;
+ 	  devices[dn].method = sanei_usb_method_libusb;
+ 	  devices[dn].open = SANE_FALSE;
+ 	  devices[dn].interface_nr = interface;
+ 	  DBG (4, "sanei_usb_init: found libusb device (0x%04x/0x%04x) interface %d  at %s\n",
+-	       dev->descriptor.idVendor, dev->descriptor.idProduct, interface, devname);
++	       desc.idVendor, desc.idProduct, interface, devname);
+ 	  dn++;
+ 	  if (dn >= MAX_DEVICES)
+ 	    return;
+-	}
+     }
+ #endif /* HAVE_LIBUSB */
+   DBG (5, "sanei_usb_init: found %d devices\n", dn);
+@@ -619,9 +621,10 @@ sanei_usb_get_vendor_product (SANE_Int d
+   else if (devices[dn].method == sanei_usb_method_libusb)
+     {
+ #ifdef HAVE_LIBUSB
+-      vendorID = usb_device (devices[dn].libusb_handle)->descriptor.idVendor;
+-      productID =
+-	usb_device (devices[dn].libusb_handle)->descriptor.idProduct;
++      struct libusb_device_descriptor desc = {0};
++      libusb_get_device_descriptor(devices[dn].libusb_device, &desc);
++      vendorID = desc.idVendor;
++      productID = desc.idProduct;
+ #else
+       DBG (1, "sanei_usb_get_vendor_product: libusb support missing\n");
+       return SANE_STATUS_UNSUPPORTED;
+@@ -709,11 +712,13 @@ sanei_usb_open (SANE_String_Const devnam
+   if (devices[devcount].method == sanei_usb_method_libusb)
+     {
+ #ifdef HAVE_LIBUSB
+-      struct usb_device *dev;
+-      struct usb_interface_descriptor *interface;
++      struct libusb_device *dev;
++      struct libusb_interface_descriptor *interface;
++      struct libusb_config_descriptor *cfg;
++      struct libusb_device_descriptor desc = {0};
+       int result, num;
+ 
+-      devices[devcount].libusb_handle = usb_open (devices[devcount].libusb_device);
++      libusb_open(devices[devcount].libusb_device, &devices[devcount].libusb_handle);
+       if (!devices[devcount].libusb_handle)
+ 	{
+ 	  SANE_Status status = SANE_STATUS_INVAL;
+@@ -735,37 +740,38 @@ sanei_usb_open (SANE_String_Const devnam
+ 	  return status;
+ 	}
+ 
+-      dev = usb_device (devices[devcount].libusb_handle);
++      dev = devices[devcount].libusb_device;
+ 
+ #if defined (__linux__)
+       if (!getenv ("SANEI_USB_KEEP_USBLP"))
+ 	{
+ 	  memset (devices[devcount].driver_detached, 0, MAX_INTERFACE_FLAGS);
+-	  detach_usblp_driver (devices[devcount].libusb_handle,
+-			       devices[devcount].driver_detached);
++	  /* detach_usblp_driver (devices[devcount].libusb_handle,
++			       devices[devcount].driver_detached); FIXME */
+ 	}
+ #endif /* __linux__ */
+ 
+       /* Set the configuration */
+-      if (!dev->config)
++      if (libusb_get_active_config_descriptor(dev, &cfg))
+ 	{
+ 	  DBG (1, "sanei_usb_open: device `%s' not configured?\n", devname);
+ 	  return SANE_STATUS_INVAL;
+ 	}
+-      if (dev->descriptor.bNumConfigurations > 1)
++      libusb_get_device_descriptor(dev, &desc);
++      if (desc.bNumConfigurations > 1)
+ 	{
+ 	  DBG (3, "sanei_usb_open: more than one "
+ 	       "configuration (%d), choosing first config (%d)\n",
+-	       dev->descriptor.bNumConfigurations, 
+-	       dev->config[0].bConfigurationValue);
++	       desc.bNumConfigurations, 
++	       cfg->bConfigurationValue);
+ 	}
+-      result = usb_set_configuration (devices[devcount].libusb_handle,
+-				      dev->config[0].bConfigurationValue);
++      result = libusb_set_configuration (devices[devcount].libusb_handle,
++				      cfg->bConfigurationValue);
+       if (result < 0)
+ 	{
+ 	  SANE_Status status = SANE_STATUS_INVAL;
+ 
+-	  DBG (1, "sanei_usb_open: libusb complained: %s\n", usb_strerror ());
++	  DBG (1, "sanei_usb_open: libusb complained: %s\n", strerror (errno));
+ 	  if (errno == EPERM)
+ 	    {
+ 	      DBG (1, "Make sure you run as root or set appropriate "
+@@ -780,19 +786,19 @@ sanei_usb_open (SANE_String_Const devnam
+ 	    }
+ 	  if (status != SANE_STATUS_GOOD)
+ 	    {
+-	  usb_close (devices[devcount].libusb_handle);
++	  libusb_close (devices[devcount].libusb_handle);
+ 	  return status;
+ 	}
+ 	}
+ 
+       /* Claim the interface */
+-      result = usb_claim_interface (devices[devcount].libusb_handle, 
++      result = libusb_claim_interface (devices[devcount].libusb_handle, 
+ 				    devices[devcount].interface_nr);
+       if (result < 0)
+ 	{
+ 	  SANE_Status status = SANE_STATUS_INVAL;
+ 
+-	  DBG (1, "sanei_usb_open: libusb complained: %s\n", usb_strerror ());
++	  DBG (1, "sanei_usb_open: libusb complained: %s\n", strerror (errno));
+ 	  if (errno == EPERM)
+ 	    {
+ 	      DBG (1, "Make sure you run as root or set appropriate "
+@@ -805,15 +811,15 @@ sanei_usb_open (SANE_String_Const devnam
+ 		   "scanner's interface?\n");
+ 	      status = SANE_STATUS_DEVICE_BUSY;
+ 	    }
+-	  usb_close (devices[devcount].libusb_handle);
++	  libusb_close (devices[devcount].libusb_handle);
+ 	  return status;
+ 	}
+-      interface = &dev->config[0].interface->altsetting[0];
++      interface = &cfg->interface->altsetting[0];
+ 
+       /* Now we look for usable endpoints */
+       for (num = 0; num < interface->bNumEndpoints; num++)
+ 	{
+-	  struct usb_endpoint_descriptor *endpoint;
++	  struct libusb_endpoint_descriptor *endpoint;
+ 	  int address, direction, transfer_type;
+ 
+ 	  endpoint = &interface->endpoint[num];
+@@ -833,7 +839,7 @@ sanei_usb_open (SANE_String_Const devnam
+ 		     "(address: %d), ignoring the new one\n",
+ 		     devices[devcount].int_in_ep);
+ 	      else
+-		devices[devcount].int_in_ep = endpoint->bEndpointAddress;
++		devices[devcount].int_in_ep = endpoint->bEndpointAddress | LIBUSB_ENDPOINT_IN;
+ 	    }
+ 	    else
+ 	      if (devices[devcount].int_out_ep)
+@@ -841,7 +847,7 @@ sanei_usb_open (SANE_String_Const devnam
+ 		     "(address: %d), ignoring the new one\n",
+ 		     devices[devcount].int_out_ep);
+ 	      else
+-		devices[devcount].int_out_ep = endpoint->bEndpointAddress;
++		devices[devcount].int_out_ep = endpoint->bEndpointAddress | LIBUSB_ENDPOINT_OUT;
+ 	  }
+ 	  else if (transfer_type == USB_ENDPOINT_TYPE_BULK)
+ 	  {
+@@ -854,7 +860,7 @@ sanei_usb_open (SANE_String_Const devnam
+ 		       "(address: %d), ignoring the new one\n",
+ 		       devices[devcount].bulk_in_ep);
+ 		else
+-		  devices[devcount].bulk_in_ep = endpoint->bEndpointAddress;
++		  devices[devcount].bulk_in_ep = endpoint->bEndpointAddress | LIBUSB_ENDPOINT_IN;
+ 	      }
+ 	    else
+ 	      {
+@@ -863,7 +869,7 @@ sanei_usb_open (SANE_String_Const devnam
+ 		       "(address: %d), ignoring the new one\n",
+ 		       devices[devcount].bulk_out_ep);
+ 	        else
+-		  devices[devcount].bulk_out_ep = endpoint->bEndpointAddress;
++		  devices[devcount].bulk_out_ep = endpoint->bEndpointAddress | LIBUSB_ENDPOINT_OUT;
+ 	      }
+ 	    }
+ 	  /* ignore currently unsupported endpoints */
+@@ -953,24 +959,24 @@ sanei_usb_close (SANE_Int dn)
+ #ifndef __macos_x__		/* assuming this is what is used on
+ 				   Mac OS X, haven't checked */
+       /* Should only be done in case of a stall */
+-      usb_clear_halt (devices[dn].libusb_handle, devices[dn].bulk_in_ep);
+-      usb_clear_halt (devices[dn].libusb_handle, devices[dn].bulk_out_ep);
++      libusb_clear_halt (devices[dn].libusb_handle, devices[dn].bulk_in_ep);
++      libusb_clear_halt (devices[dn].libusb_handle, devices[dn].bulk_out_ep);
+       /* be careful, we don't know if we are in DATA0 stage now */
+-      usb_resetep(devices[dn].libusb_handle, devices[dn].bulk_in_ep);
+-      usb_resetep(devices[dn].libusb_handle, devices[dn].bulk_out_ep);
++      libusb_clear_halt(devices[dn].libusb_handle, devices[dn].bulk_in_ep);
++      libusb_clear_halt(devices[dn].libusb_handle, devices[dn].bulk_out_ep);
+ #endif
+-      usb_release_interface (devices[dn].libusb_handle, 
++      libusb_release_interface (devices[dn].libusb_handle, 
+ 			     devices[dn].interface_nr);
+ 
+ #if defined (__linux__)
+       if (!getenv ("SANEI_USB_KEEP_USBLP"))
+ 	{
+-	  attach_usblp_driver (devices[dn].libusb_handle,
+-			       devices[dn].driver_detached);
++	  /* attach_usblp_driver (devices[dn].libusb_handle,
++			       devices[dn].driver_detached); FIXME */
+ 	}
+ #endif /* __linux__*/
+ 
+-      usb_close (devices[dn].libusb_handle);
++      libusb_close (devices[dn].libusb_handle);
+     }
+ #else
+     DBG (1, "sanei_usb_close: libusb support missing\n");
+@@ -1004,9 +1010,9 @@ sanei_usb_read_bulk (SANE_Int dn, SANE_B
+ #ifdef HAVE_LIBUSB
+     {
+       if (devices[dn].bulk_in_ep)
+-	read_size = usb_bulk_read (devices[dn].libusb_handle,
++	libusb_bulk_transfer (devices[dn].libusb_handle,
+ 				   devices[dn].bulk_in_ep, (char *) buffer,
+-				   (int) *size, libusb_timeout);
++				   (int) *size, &read_size, libusb_timeout);
+       else
+ 	{
+ 	  DBG (1, "sanei_usb_read_bulk: can't read without a bulk-in "
+@@ -1032,7 +1038,7 @@ sanei_usb_read_bulk (SANE_Int dn, SANE_B
+       DBG (1, "sanei_usb_read_bulk: read failed: %s\n", strerror (errno));
+ #ifdef HAVE_LIBUSB
+       if (devices[dn].method == sanei_usb_method_libusb)
+-	usb_clear_halt (devices[dn].libusb_handle, devices[dn].bulk_in_ep);
++	libusb_clear_halt (devices[dn].libusb_handle, devices[dn].bulk_in_ep);
+ #endif
+       *size = 0;
+       return SANE_STATUS_IO_ERROR;
+@@ -1079,10 +1085,10 @@ sanei_usb_write_bulk (SANE_Int dn, const
+ #ifdef HAVE_LIBUSB
+     {
+       if (devices[dn].bulk_out_ep)
+-	write_size = usb_bulk_write (devices[dn].libusb_handle,
++	libusb_bulk_transfer (devices[dn].libusb_handle,
+ 				     devices[dn].bulk_out_ep,
+ 				     (const char *) buffer,
+-				     (int) *size, libusb_timeout);
++				     (int) *size, &write_size, libusb_timeout);
+       else
+ 	{
+ 	  DBG (1, "sanei_usb_write_bulk: can't write without a bulk-out "
+@@ -1109,7 +1115,7 @@ sanei_usb_write_bulk (SANE_Int dn, const
+       *size = 0;
+ #ifdef HAVE_LIBUSB
+       if (devices[dn].method == sanei_usb_method_libusb)
+-	usb_clear_halt (devices[dn].libusb_handle, devices[dn].bulk_out_ep);
++	libusb_clear_halt (devices[dn].libusb_handle, devices[dn].bulk_out_ep);
+ #endif
+       return SANE_STATUS_IO_ERROR;
+     }
+@@ -1166,13 +1172,13 @@ sanei_usb_control_msg (SANE_Int dn, SANE
+     {
+       int result;
+ 
+-      result = usb_control_msg (devices[dn].libusb_handle, rtype, req,
++      result = libusb_control_transfer (devices[dn].libusb_handle, rtype, req,
+ 				value, index, (char *) data, len,
+ 				libusb_timeout);
+       if (result < 0)
+ 	{
+ 	  DBG (1, "sanei_usb_control_msg: libusb complained: %s\n",
+-	       usb_strerror ());
++	       strerror (errno));
+ 	  return SANE_STATUS_INVAL;
+ 	}
+       if ((rtype & 0x80) && debug_level > 10)
+@@ -1218,9 +1224,9 @@ sanei_usb_read_int (SANE_Int dn, SANE_By
+ #ifdef HAVE_LIBUSB
+     {
+       if (devices[dn].int_in_ep)
+-	read_size = usb_bulk_read (devices[dn].libusb_handle,
++	libusb_bulk_transfer (devices[dn].libusb_handle,
+ 				   devices[dn].int_in_ep, (char *) buffer,
+-				   (int) *size, libusb_timeout);
++				   (int) *size, &read_size, libusb_timeout);
+       else
+ 	{
+ 	  DBG (1, "sanei_usb_read_int: can't read without an int "
+@@ -1246,7 +1252,7 @@ sanei_usb_read_int (SANE_Int dn, SANE_By
+       DBG (1, "sanei_usb_read_int: read failed: %s\n", strerror (errno));
+ #ifdef HAVE_LIBUSB
+       if (devices[dn].method == sanei_usb_method_libusb)
+-	usb_clear_halt (devices[dn].libusb_handle, devices[dn].int_in_ep);
++	libusb_clear_halt (devices[dn].libusb_handle, devices[dn].int_in_ep);
+ #endif
+       *size = 0;
+       return SANE_STATUS_IO_ERROR;
+Index: iscan-2.10.0/configure
+===================================================================
+--- iscan-2.10.0.orig/configure
++++ iscan-2.10.0/configure
+@@ -5271,13 +5271,13 @@ fi
+ 
+ 
+ 
+-{ echo "$as_me:$LINENO: checking for usb_get_busses in -lusb" >&5
+-echo $ECHO_N "checking for usb_get_busses in -lusb... $ECHO_C" >&6; }
++{ echo "$as_me:$LINENO: checking for libusb_init in -lusb-1.0" >&5
++echo $ECHO_N "checking for libusb_init in -lusb-1.0... $ECHO_C" >&6; }
+ if test "${ac_cv_lib_usb_usb_get_busses+set}" = set; then
+   echo $ECHO_N "(cached) $ECHO_C" >&6
+ else
+   ac_check_lib_save_LIBS=$LIBS
+-LIBS="-lusb  $LIBS"
++LIBS="-lusb-1.0  $LIBS"
+ cat >conftest.$ac_ext <<_ACEOF
+ /* confdefs.h.  */
+ _ACEOF
+@@ -5291,11 +5291,11 @@ cat >>conftest.$ac_ext <<_ACEOF
+ #ifdef __cplusplus
+ extern "C"
+ #endif
+-char usb_get_busses ();
++char libusb_init ();
+ int
+ main ()
+ {
+-return usb_get_busses ();
++return libusb_init ();
+   ;
+   return 0;
+ }
+@@ -5337,7 +5337,8 @@ if test $ac_cv_lib_usb_usb_get_busses =
+ #define HAVE_LIBUSB 1
+ _ACEOF
+ 
+-  LIBS="-lusb $LIBS"
++  LIBS="-lusb-1.0 $LIBS"
++  CPPFLAGS="$CPPFLAGS $($PKG_CONFIG libusb-1.0 --cflags-only-I)"
+ 
+ fi
+ 
