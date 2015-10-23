@@ -1,0 +1,17 @@
+#!/bin/sh /etc/rc.common
+
+. /lib/functions.sh
+
+START=93
+
+start ()
+{
+	config_load network
+	config_get ip lan ipaddr
+	vlmcsd -u nobody -g nogroup ${ip:+-L $ip}
+}
+
+stop ()
+{
+	killall vlmcsd
+}
