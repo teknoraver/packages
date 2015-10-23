@@ -1,0 +1,210 @@
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -244,7 +244,6 @@
+ target_alias = @target_alias@
+ SUBDIRS = \
+ 	include \
+-	libltdl \
+ 	lib \
+ 	sanei \
+ 	backend
+--- a/configure
++++ b/configure
+@@ -2044,7 +2044,6 @@
+ ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
+ 
+ 
+-subdirs="$subdirs libltdl"
+ 
+ 
+ am__api_version="1.9"
+--- a/backend/Makefile.in
++++ b/backend/Makefile.in
+@@ -70,7 +70,7 @@
+ am__installdirs = "$(DESTDIR)$(exec_sanelibdir)"
+ exec_sanelibLTLIBRARIES_INSTALL = $(INSTALL)
+ LTLIBRARIES = $(exec_sanelib_LTLIBRARIES) $(noinst_LTLIBRARIES)
+-libsane_epkowa_s_la_LIBADD =
++libsane_epkowa_s_la_LIBADD = -lltdl
+ am_libsane_epkowa_s_la_OBJECTS = libsane_epkowa_s_la-epkowa-s.lo
+ libsane_epkowa_s_la_OBJECTS = $(am_libsane_epkowa_s_la_OBJECTS)
+ am__DEPENDENCIES_1 =
+@@ -78,7 +78,6 @@
+ 	$(top_builddir)/sanei/libsanei.la $(am__DEPENDENCIES_1)
+ am_libsane_epkowa_la_OBJECTS = libsane_epkowa_la-epkowa.lo \
+ 	libsane_epkowa_la-epkowa_ip.lo \
+-	libsane_epkowa_la-epkowa_scsi.lo \
+ 	libsane_epkowa_la-epkowa_usb.lo \
+ 	libsane_epkowa_la-sane_strstatus.lo
+ libsane_epkowa_la_OBJECTS = $(am_libsane_epkowa_la_OBJECTS)
+@@ -270,8 +269,7 @@
+ 
+ libsane_epkowa_la_LIBADD = \
+ 	libsane-epkowa-s.la \
+-	$(top_builddir)/sanei/libsanei.la \
+-	$(LIBLTDL)
++	$(top_builddir)/sanei/libsanei.la
+ 
+ libsane_epkowa_la_SOURCES = \
+ 	epkowa.c \
+@@ -279,8 +277,6 @@
+ 	epkowa_ip.c \
+ 	epkowa_ip.h \
+ 	epkowa_ip_api.h \
+-	epkowa_scsi.c \
+-	epkowa_scsi.h \
+ 	epkowa_usb.c \
+ 	epkowa_usb.h \
+ 	sane_strstatus.c
+--- a/backend/epkowa.c
++++ b/backend/epkowa.c
+@@ -1555,11 +1555,16 @@
+     return s->hw->interpreter->send (s->hw, buf, buf_size, status);
+   }
+ 
++
++#ifdef EPKOWA_SCSI
+   if (s->hw->connection == SANE_EPSON_SCSI)
+   {
+     return sanei_epson_scsi_write (s->hw->fd, buf, buf_size, status);
+   }
+-  else if (s->hw->connection == SANE_EPSON_PIO)
++  else
++#endif
++#ifdef EPKOWA_PIO
++  if (s->hw->connection == SANE_EPSON_PIO)
+   {
+     size_t n;
+ 
+@@ -1570,7 +1575,9 @@
+ 
+     return n;
+   }
+-  else if (s->hw->connection == SANE_EPSON_USB)
++  else
++#endif
++  if (s->hw->connection == SANE_EPSON_USB)
+   {
+     {
+       size_t n;
+@@ -1599,18 +1606,24 @@
+     return s->hw->interpreter->recv (s->hw, buf, buf_size, status);
+   }
+ 
++#ifdef EPKOWA_SCSI
+   if (s->hw->connection == SANE_EPSON_SCSI)
+   {
+     n = sanei_epson_scsi_read (s->hw->fd, buf, buf_size, status);
+   }
+-  else if (s->hw->connection == SANE_EPSON_PIO)
++  else
++#endif
++#ifdef EPKOWA_PIO
++  if (s->hw->connection == SANE_EPSON_PIO)
+   {
+     if (buf_size == (n = sanei_pio_read (s->hw->fd, buf, (size_t) buf_size)))
+       *status = SANE_STATUS_GOOD;
+     else
+       *status = SANE_STATUS_INVAL;
+   }
+-  else if (s->hw->connection == SANE_EPSON_USB)
++  else
++#endif
++  if (s->hw->connection == SANE_EPSON_USB)
+   {
+     {
+       /* !!! only report an error if we don't read anything */
+@@ -2467,6 +2480,7 @@
+     s->hw->interpreter->open (s->hw);
+   }
+ 
++#ifdef EPKOWA_SCSI
+   if (s->hw->connection == SANE_EPSON_SCSI)
+   {
+     status = sanei_scsi_open (s->hw->sane.name, &s->hw->fd,
+@@ -2478,7 +2492,10 @@
+       return status;
+     }
+   }
+-  else if (s->hw->connection == SANE_EPSON_PIO)
++  else
++#endif
++#ifdef EPKOWA_PIO
++  if (s->hw->connection == SANE_EPSON_PIO)
+   {
+     status = sanei_pio_open (s->hw->sane.name, &s->hw->fd);
+     if (SANE_STATUS_GOOD != status)
+@@ -2488,7 +2505,9 @@
+       return status;
+     }
+   }
+-  else if (s->hw->connection == SANE_EPSON_USB)
++  else
++#endif
++  if (s->hw->connection == SANE_EPSON_USB)
+   {
+     status = sanei_usb_open (s->hw->sane.name, &s->hw->fd);
+ 
+@@ -2804,6 +2823,7 @@
+    *  if interface is SCSI do an inquiry.
+    */
+ 
++#ifdef EPKOWA_SCSI
+   if (s->hw->connection == SANE_EPSON_SCSI)
+   {
+     char buf[INQUIRY_BUF_SIZE + 1];
+@@ -2855,7 +2875,10 @@
+     }
+   }
+   /* use the SANEI functions to handle a PIO device */
+-  else if (s->hw->connection == SANE_EPSON_PIO)
++  else
++#endif
++#ifdef EPKOWA_PIO
++  if (s->hw->connection == SANE_EPSON_PIO)
+   {
+     if (SANE_STATUS_GOOD != (status = sanei_pio_open (dev_name, &s->hw->fd)))
+     {
+@@ -2866,7 +2889,9 @@
+     }
+   }
+   /* use the SANEI functions to handle a USB device */
+-  else if (s->hw->connection == SANE_EPSON_USB)
++  else
++#endif
++  if (s->hw->connection == SANE_EPSON_USB)
+   {
+     SANE_Word vendor;
+     SANE_Word product;
+--- a/lib/Makefile.in
++++ b/lib/Makefile.in
+@@ -250,7 +250,7 @@
+ noinst_LTLIBRARIES = libimage-stream.la
+ libimage_stream_la_CPPFLAGS = -I$(top_srcdir)/include
+ libimage_stream_la_LDFLAGS = -static
+-libimage_stream_la_LIBADD = $(LIBLTDL)
++libimage_stream_la_LIBADD = 
+ libimage_stream_la_SOURCES = \
+ 	cfilebuf.cc \
+ 	cfilebuf.hh \
+--- a/sanei/Makefile.in
++++ b/sanei/Makefile.in
+@@ -66,8 +66,7 @@
+ am_libsanei_la_OBJECTS = libsanei_la-sanei_config.lo \
+ 	libsanei_la-sanei_config2.lo \
+ 	libsanei_la-sanei_constrain_value.lo \
+-	libsanei_la-sanei_init_debug.lo libsanei_la-sanei_pio.lo \
+-	libsanei_la-sanei_scsi.lo libsanei_la-sanei_usb.lo
++	libsanei_la-sanei_init_debug.lo libsanei_la-sanei_usb.lo
+ libsanei_la_OBJECTS = $(am_libsanei_la_OBJECTS)
+ DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir) -I$(top_builddir)/include/sane
+ depcomp = $(SHELL) $(top_srcdir)/depcomp
+@@ -252,8 +251,6 @@
+ 	sanei_config2.c \
+ 	sanei_constrain_value.c \
+ 	sanei_init_debug.c \
+-	sanei_pio.c \
+-	sanei_scsi.c \
+ 	sanei_usb.c
+ 
+ EXTRA_DIST = \
