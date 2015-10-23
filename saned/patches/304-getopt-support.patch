@@ -8,8 +8,6 @@ add support for getopt_long, adjust help message
  frontend/saned.c | 75 +++++++++++++++++++++++++++++++++-----------------------
  1 file changed, 45 insertions(+), 30 deletions(-)
 
-diff --git a/frontend/saned.c b/frontend/saned.c
-index 8eff6c7..f74b8fa 100644
 --- a/frontend/saned.c
 +++ b/frontend/saned.c
 @@ -82,6 +82,8 @@

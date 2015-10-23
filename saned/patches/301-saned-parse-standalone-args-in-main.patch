@@ -8,8 +8,6 @@ move argument parsing logic from run_standalone() to main()
  frontend/saned.c | 19 ++++++++++++-------
  1 file changed, 12 insertions(+), 7 deletions(-)
 
-diff --git a/frontend/saned.c b/frontend/saned.c
-index 108512d..e717ed2 100644
 --- a/frontend/saned.c
 +++ b/frontend/saned.c
 @@ -2923,7 +2923,7 @@ do_bindings (int *nfds, struct pollfd **fds)

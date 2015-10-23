@@ -8,8 +8,6 @@ move argument parsing logic from run_inetd() to main()
  frontend/saned.c | 20 ++++++++++----------
  1 file changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/frontend/saned.c b/frontend/saned.c
-index e717ed2..ab36397 100644
 --- a/frontend/saned.c
 +++ b/frontend/saned.c
 @@ -3172,7 +3172,7 @@ run_standalone (char *user)

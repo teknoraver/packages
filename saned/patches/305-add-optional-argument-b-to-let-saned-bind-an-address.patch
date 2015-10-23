@@ -7,8 +7,6 @@ Subject: [PATCH 5/5] add optional argument '-b' to let saned bind an address
  frontend/saned.c | 17 +++++++++++++----
  1 file changed, 13 insertions(+), 4 deletions(-)
 
-diff --git a/frontend/saned.c b/frontend/saned.c
-index f74b8fa..d33b031 100644
 --- a/frontend/saned.c
 +++ b/frontend/saned.c
 @@ -249,6 +249,7 @@ static int num_handles;

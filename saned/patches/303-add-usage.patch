@@ -8,8 +8,6 @@ move help text in a separate function
  frontend/saned.c | 10 +++++++---
  1 file changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/frontend/saned.c b/frontend/saned.c
-index ab36397..8eff6c7 100644
 --- a/frontend/saned.c
 +++ b/frontend/saned.c
 @@ -3253,6 +3253,11 @@ run_inetd (char *sock)

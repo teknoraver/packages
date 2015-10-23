@@ -1,7 +1,5 @@
-Index: iscan-2.10.0/sanei/sanei_usb.c
-===================================================================
---- iscan-2.10.0.orig/sanei/sanei_usb.c
-+++ iscan-2.10.0/sanei/sanei_usb.c
+--- a/sanei/sanei_usb.c
++++ b/sanei/sanei_usb.c
 @@ -60,7 +60,7 @@
  #include <resmgr.h>
  #endif
@@ -440,10 +438,8 @@ Index: iscan-2.10.0/sanei/sanei_usb.c
  #endif
        *size = 0;
        return SANE_STATUS_IO_ERROR;
-Index: iscan-2.10.0/configure
-===================================================================
---- iscan-2.10.0.orig/configure
-+++ iscan-2.10.0/configure
+--- a/configure
++++ b/configure
 @@ -5271,13 +5271,13 @@ fi
  
  
