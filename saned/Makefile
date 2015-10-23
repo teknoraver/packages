@@ -29,7 +29,7 @@ define Package/saned/Default
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=Printing
-  DEPENDS:=+libpthread +libusb-1.0 +libltdl CONFIG_PACKAGE_libjpeg:libjpeg CONFIG_PACKAGE_libpng:libpng
+  DEPENDS:=+libpthread +libusb-1.0 +libltdl +PACKAGE_libjpeg:libjpeg +PACKAGE_libpng:libpng
   TITLE:=Scanner Access Now Easy
   URL:=http://sane-project.org/
 endef
