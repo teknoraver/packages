@@ -1,5 +1,41 @@
 --- a/configure
 +++ b/configure
+@@ -17247,7 +17247,7 @@ if test "${ac_cv_lib_nsl_gethostbyname+s
+   $as_echo_n "(cached) " >&6
+ else
+   ac_check_lib_save_LIBS=$LIBS
+-LIBS="-lnsl  $LIBS"
++LIBS="  $LIBS"
+ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+ 
+@@ -17282,7 +17282,7 @@ if test "x$ac_cv_lib_nsl_gethostbyname"
+ #define HAVE_LIBNSL 1
+ _ACEOF
+ 
+-  LIBS="-lnsl $LIBS"
++  LIBS=" $LIBS"
+ 
+ fi
+ 
+@@ -17292,7 +17292,7 @@ if test "${ac_cv_lib_rt_nanosleep+set}"
+   $as_echo_n "(cached) " >&6
+ else
+   ac_check_lib_save_LIBS=$LIBS
+-LIBS="-lrt  $LIBS"
++LIBS="  $LIBS"
+ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+ /* end confdefs.h.  */
+ 
+@@ -17327,7 +17327,7 @@ if test "x$ac_cv_lib_rt_nanosleep" = x""
+ #define HAVE_LIBRT 1
+ _ACEOF
+ 
+-  LIBS="-lrt $LIBS"
++  LIBS=" $LIBS"
+ 
+ fi
+ 
 @@ -19245,7 +19245,7 @@ for ac_lib in '' pcap; do
      ac_res="none required"
    else

@@ -1,0 +1,22 @@
+--- a/src/Makefile.in
++++ b/src/Makefile.in
+@@ -36,9 +36,7 @@ POST_UNINSTALL = :
+ build_triplet = @build@
+ host_triplet = @host@
+ target_triplet = @target@
+-bin_PROGRAMS = tcpreplay$(EXEEXT) tcpprep$(EXEEXT) tcprewrite$(EXEEXT) \
+-	tcpreplay-edit$(EXEEXT) tcpcapinfo$(EXEEXT) $(am__EXEEXT_1) \
+-	$(am__EXEEXT_2)
++bin_PROGRAMS = tcpreplay$(EXEEXT)
+ @COMPILE_TCPBRIDGE_TRUE@am__append_1 = tcpbridge 
+ @COMPILE_TCPBRIDGE_TRUE@am__append_2 = tcpbridge.1
+ @COMPILE_TCPLIVEPLAY_TRUE@am__append_3 = tcpliveplay 
+@@ -406,7 +404,7 @@ top_srcdir = @top_srcdir@
+ @COMPILE_FRAGROUTE_TRUE@LIBFRAGROUTE = ./fragroute/libfragroute.a @LDNETLIB@
+ @COMPILE_FRAGROUTE_FALSE@FRAGROUTE_DIR = 
+ @COMPILE_FRAGROUTE_TRUE@FRAGROUTE_DIR = fragroute
+-SUBDIRS = common tcpedit $(FRAGROUTE_DIR)
++SUBDIRS = common
+ @SYSTEM_STRLCPY_FALSE@LIBSTRL = ../lib/libstrl.a
+ @SYSTEM_STRLCPY_TRUE@LIBSTRL = 
+ 
