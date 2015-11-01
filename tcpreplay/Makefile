@@ -40,7 +40,7 @@ CONFIGURE_ARGS += --with-libpcap=$(STAGING_DIR)/usr
 
 define Package/tcpreplay/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/tcpreplay $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/tcpreplay $(1)/usr/bin/
 endef
 
 $(eval $(call BuildPackage,tcpreplay))
