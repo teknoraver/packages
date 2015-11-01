@@ -15,11 +15,8 @@ PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/appneta/tcpreplay/releases/download/v4.1.0
 PKG_MD5SUM:=fd48d73d84ade30ece0a9abb538c82d5
 
-PKG_MAINTAINER:=Felix Fietkau <nbd@openwrt.org>
+PKG_MAINTAINER:=Matteo Croce <matteo@openwrt.org>
 PKG_LICENSE:=GPL
-
-PKG_BUILD_PARALLEL:=1
-PKG_INSTALL:=1
 
 include $(INCLUDE_DIR)/package.mk
 
