@@ -23,7 +23,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/tcpreplay
   SECTION:=net
   CATEGORY:=Network
-  DEPENDS:=+libpcap
+  DEPENDS:=+libpcap +libpthread
   TITLE:=Pcap editing and replaying utilities
   URL:=http://tcpreplay.appneta.com/
 endef
