@@ -52,7 +52,7 @@ static void usage(char *argv0)
 "	-f <file>	File to write on memory read, or\n"
 "			to read on memory write\n"
 "	<addr>		The memory address to access\n"
-"	<val>		The value to write (implies -w)\n\n"
+"	<val>		The value to write/and/or/xor (implies -w if any)\n\n"
 "Examples:\n"
 "	%s 0x1000		Reads one byte from 0x1000\n"
 "	%s 0x1000 0x12		Writes 0x12 to location 0x1000\n"
