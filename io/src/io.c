@@ -43,22 +43,22 @@ static void usage(char *argv0)
 	fprintf(stderr,
 "Raw memory i/o utility - $Revision: 2.1 $\n\n"
 "%s -v -1|2|4|8 -r|w|a|o|x [-l <len>] [-f <file>] <addr> [<value>]\n\n"
-"    -v         Verbose, asks for confirmation\n"
-"    -1|2|4|8   Sets memory access size in bytes (default byte)\n"
-"    -l <len>   Length in bytes of area to access (defaults to\n"
-"               one access, or whole file length)\n"
-"    -r|w|a|o|x Read from or Write to memory (default read)\n"
-"               optional write with modify (and/or/xor)\n"
-"    -f <file>  File to write on memory read, or\n"
-"               to read on memory write\n"
-"    <addr>     The memory address to access\n"
-"    <val>      The value to write (implies -w)\n\n"
+"	-v		Verbose, asks for confirmation\n"
+"	-1|2|4|8|d	Sets memory access size in bytes or hexdump (default byte)\n"
+"	-l <len>	Length in bytes of area to access (defaults to\n"
+"			one access, or whole file length)\n"
+"	-r|w|a|o|x	Read from or Write to memory (default read)\n"
+"			optional write with modify (and/or/xor)\n"
+"	-f <file>	File to write on memory read, or\n"
+"			to read on memory write\n"
+"	<addr>		The memory address to access\n"
+"	<val>		The value to write (implies -w)\n\n"
 "Examples:\n"
-"    %s 0x1000                  Reads one byte from 0x1000\n"
-"    %s 0x1000 0x12             Writes 0x12 to location 0x1000\n"
-"    %s -2 -l 8 0x1000          Reads 8 words from 0x1000\n"
-"    %s -r -f dmp -l 100 200    Reads 100 bytes from addr 200 to file\n"
-"    %s -w -f img 0x10000       Writes the whole of file to memory\n"
+"	%s 0x1000		Reads one byte from 0x1000\n"
+"	%s 0x1000 0x12		Writes 0x12 to location 0x1000\n"
+"	%s -2 -l 8 0x1000	Reads 8 words from 0x1000\n"
+"	%s -r -f dmp -l 80 200	Reads 80 bytes from addr 200 to file\n"
+"	%s -w -f img 0x10000	Writes the whole of file to memory\n"
 "\n"
 "Note access size -(1|2|4|8) does not apply to file based accesses.\n\n",
 		argv0, argv0, argv0, argv0, argv0, argv0);
@@ -182,8 +182,54 @@ static void xor_write_memory(char *addr, int len, enum iosize iosize, unsigned l
 	}
 }
 
-int
-main (int argc, char **argv)
+void hexdump(char *phys_addr, const char *buf, size_t length)
+{
+	/* Print 16 bytes per line: */
+	const size_t bytes_per_line = 16;
+	/* Print in columns of 8 bytes, separated by an additional space: */
+	const size_t column_width = 8;
+	int star = 0;
+
+	for (unsigned i = 0; i < length; i += bytes_per_line, buf += bytes_per_line) {
+		/* Ignore lines identical to previous ones: */
+		if(i && !memcmp(buf, buf - bytes_per_line, bytes_per_line)) {
+			if(!star) {
+				puts("*");
+				star = 1;
+			}
+			continue;
+		}
+		star = 0;
+		printf("%08zx  ", ((uintptr_t)phys_addr + i));
+
+		size_t j;
+		size_t data_available = bytes_per_line;
+
+		if (i + data_available >= length)
+			data_available = length - i;
+
+		for (j = 0; j < bytes_per_line; j++) {
+			if (j < data_available)
+				printf("%02x ", buf[j] & 0xff);
+			else
+				printf("   ");
+			if (j > 0 && (j % column_width) == column_width - 1)
+				putchar(' ');
+		}
+
+		putchar('|');
+		for (j = 0; j < bytes_per_line; j++) {
+			int c = buf[j];
+			if (j < data_available)
+				putchar(c >= ' ' && c <= '~' ? c : '.');
+			else
+				putchar(' ');
+		}
+		puts("|");
+	}
+}
+
+int main (int argc, char **argv)
 {
 	int mfd, ffd = 0, req_len = 0, opt;
 	char *real_io;
@@ -191,6 +237,7 @@ main (int argc, char **argv)
 	char *endptr;
 	enum memops memfunc = MEM_READ;
 	enum iosize iosize = U8;
+	int dump = 0;
 	char *filename = NULL;
 	int verbose = 0;
 
@@ -198,7 +245,7 @@ main (int argc, char **argv)
 	if (argc == 1)
 		usage(argv[0]);
 
-	while ((opt = getopt(argc, argv, "hv1248rwaoxl:f:")) > 0) {
+	while ((opt = getopt(argc, argv, "hv1248drwaoxl:f:")) > 0) {
 		switch (opt) {
 		case 'h':
 			usage(argv[0]);
@@ -211,6 +258,9 @@ main (int argc, char **argv)
 		case '8':
 			iosize = opt - '0';
 			break;
+		case 'd':
+			iosize = 1;
+			dump = 1;
 		case 'r':
 			memfunc = MEM_READ;
 			break;
@@ -414,7 +464,10 @@ main (int argc, char **argv)
 		switch (memfunc)
 		{
 		case MEM_READ:
-			memread_memory((char *)req_addr, real_io + offset, req_len, iosize);
+			if (dump)
+				hexdump((char *)req_addr, real_io + offset, req_len);
+			else
+				memread_memory((char *)req_addr, real_io + offset, req_len, iosize);
 			break;
 		case MEM_WRITE:
 			write_memory(real_io + offset, req_len, iosize, req_value);
